@@ -11,48 +11,47 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <iomanip>
+//#include "jeremy.h"
 
 using namespace std;
 
-class lander{
+class DOF{
 public:
-    double z, zdot, zdotdot;
-    double mass, gravity, zforce;
-    double target;
-    double tolerance;
+    double s, sdot, sdotdot;
+    double mass, gravity, force;
+    double target, energy;
     
     void initialize();
-    double thruster(double F);
 };
 
-void lander::initialize(){
-    z = rand()%1000;
-    zdot = -20;
+void DOF::initialize(){
+    s = rand()%1000;
+    sdot = -5;
     gravity = -9.81;
     mass = 10;
-    zforce = mass*gravity*-1;
-    zdotdot = gravity + zforce/mass;
+    sdotdot = gravity + force/mass;
     target = 0;
-    tolerance = (z-target)*0.01;
-    cout << "0 \t\t" << z << "\t\t" << zdot << endl;
-}
-
-double lander::thruster(double force){
-    double accel;
-    return accel = gravity + force/mass;
+    energy = 0.5*mass*pow(sdot,2)-mass*gravity*s;
+    
+    cout << "0.00 \t\t" << s << "\t\t" << sdot << "\t\t" << energy << endl;
 }
 
 double jeremy(double position, double velocity, double time){
-    double thrust = position/velocity +2;
+    double thrust = position*10/(velocity);
     return thrust;
 }
 
-void dynamicscalc(double & position, double & velocity, double & time, double g, double m, double timestep, double & accel){
+double dynamicscalc(double & position, double & velocity, double & time, double g, double m, double timestep, double & accel){
+    double accelprev = accel;
+    double velocityprev = velocity;
     double force = jeremy(position, velocity, time);
-    accel = 0.9*accel + 0.1*force/m;
-    velocity = velocity + accel*timestep;
-    position = position + velocity*timestep + .5*accel*timestep*timestep;
+    accel = force/m + g;
+    velocity = velocity + 0.5*timestep*(accelprev+accel);
+    position = position + 0.5*timestep*(velocity+velocityprev);
     time = time + timestep;
+    double energy = 0.5*m*pow(velocity,2)-m*g*position;
+    return energy; // calc KE, PE, combine later
 }
 
 
@@ -60,23 +59,24 @@ int main() {
     srand(time(NULL));
     
     double t = 0;
-    double tstep = 0.1;
+    double tstep = 0.01;
+    double E;
     
-    vector<lander> coordinates;
+    vector<DOF> coordinates;
     
-    lander d;
+    DOF d;
     d.initialize();
     coordinates.push_back(d);
     
     ofstream myfile;
     myfile.open ("timestepdata.txt");
     
-    while((coordinates.at(0).z-coordinates.at(0).target)>coordinates.at(0).tolerance){
+    while((coordinates.at(0).s>coordinates.at(0).target) && t<20){
         
-        dynamicscalc(coordinates.at(0).z, coordinates.at(0).zdot, t, coordinates.at(0).gravity, coordinates.at(0).mass
-                     , tstep, coordinates.at(0).zdotdot);
-        cout << t << "\t\t" << coordinates.at(0).z << "\t\t" << coordinates.at(0).zdot << "\n";
-        myfile << t << "\t\t" << coordinates.at(0).z << "\t\t" << coordinates.at(0).zdot << "\n";
+        E = dynamicscalc(coordinates.at(0).s, coordinates.at(0).sdot, t, coordinates.at(0).gravity, coordinates.at(0).mass
+                     , tstep, coordinates.at(0).sdotdot);
+        cout << setiosflags(ios::fixed) << setprecision(2) << t << "\t\t" << coordinates.at(0).s << "\t\t" << coordinates.at(0).sdot << "\t\t" << E<< "\n";
+        myfile << setiosflags(ios::fixed) << setprecision(2) << t << "\t\t" << coordinates.at(0).s << "\t\t" << coordinates.at(0).sdot << "\t\t"<< E <<"\n";
     };
     
     myfile.close();
